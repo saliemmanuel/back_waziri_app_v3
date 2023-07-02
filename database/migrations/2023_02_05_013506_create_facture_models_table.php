@@ -15,7 +15,7 @@ class CreateFactureModelsTable extends Migration
     {
         Schema::create('facture_models', function (Blueprint $table) {
             $table->id();
-            $table->integer('numero_facture')->default(000000)->nullable();
+            $table->integer('numero_facture');
             $table->string('mensualite_facture');
             $table->string('montant_verser');
             $table->string('reste_facture');

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CodeAdministrationModel;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,16 +48,25 @@ class UtilisateurController extends Controller
                     'nom_utilisateur' => $request->nom_utilisateur,
                     'prenom_utilisateur' => $request->prenom_utilisateur,
                     'email' => $request->email,
-                    'password' =>  bcrypt($request->password),
+                    'password' => bcrypt($request->password),
                     'telephone_utilisateur' => $request->telephone_utilisateur,
                     'role_utilisateur' => $request->role_utilisateur,
                     'zone_utilisateur' => $request->zone_utilisateur,
                     'id_utilisateur_initiateur' => $request->id_utilisateur_initiateur
                 ]
             );
+            // initialisation du code administration par défaut
+            CodeAdministrationModel::create(
+                [
+                    'code_admin' => Hash::make("000000"),
+                    'remember_code_admin' => "000000",
+                    'id_admin' => $utilisateurModel->id
+                ]
+            );
+
             return response()->json(['message' => 'Utilisateur créer avec succes', 'utilisateur' => $utilisateurModel], 200);
         } catch (\Throwable $th) {
-            return response()->json(['response' =>  "E-mail déjà utiliser.", 'error' => '1'], 400);
+            return response()->json(['response' => "E-mail déjà utiliser.", 'error' => '1'], 400);
         }
     }
 
@@ -90,7 +100,7 @@ class UtilisateurController extends Controller
             return response()->json(['message' => 'erreur 400', 'error' => '1'], 400);
         $Utilisateur->update($request->all());
 
-        return response()->json(['Utilisateur' => $Utilisateur, 'message' => 'Modification effectuée','error' => '0'], 200);
+        return response()->json(['Utilisateur' => $Utilisateur, 'message' => 'Modification effectuée', 'error' => '0'], 200);
     }
 
 
@@ -103,7 +113,7 @@ class UtilisateurController extends Controller
         ])->get()->first();
         try {
             if ($user != null) {
-                $data =  User::find($user->id)->delete();
+                $data = User::find($user->id)->delete();
                 return response()->json([
                     "message" => "Suppréssion effectuée",
                     "statut" => $data
@@ -126,7 +136,6 @@ class UtilisateurController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
-
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'message' => 'E-mail ou mots de passe incorrect.'
@@ -149,4 +158,22 @@ class UtilisateurController extends Controller
     {
         return $request->user();
     }
+
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+            'new_password' => 'required'
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Ancient mots de passe incorrect.'], 202);
+        }
+        $user->update(['password' => bcrypt($request->new_password)]);
+        return response()->json(['Utilisateur' => $user, 'message' => 'Modification effectuée', 'error' => '0'], 200);
+    }
+
+
 }

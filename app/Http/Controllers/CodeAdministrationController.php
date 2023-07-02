@@ -13,10 +13,6 @@ use function PHPUnit\Framework\isNull;
 
 class CodeAdministrationController extends Controller
 {
-    public function index()
-    {
-        $code = CodeAdministrationModel::all();
-    }
 
     public function store(Request $request)
     {
@@ -31,7 +27,7 @@ class CodeAdministrationController extends Controller
         }
 
         try {
-            $code = CodeAdministrationModel::create(
+            CodeAdministrationModel::create(
                 [
                     'code_admin' => Hash::make($request->code_admin),
                     'remember_code_admin' => $request->code_admin,
@@ -41,8 +37,9 @@ class CodeAdministrationController extends Controller
             return response()->json(['message' => 'Code créer avec succes'], 200);
         } catch (\Throwable $th) {
             return response()->json([
-                'response' =>  "Error :" . $request->id_admin,
-                'message' =>  'Code existant.', 'error' => '1'
+                'response' => "Error :" . $request->id_admin,
+                'message' => 'Code existant.',
+                'error' => '1'
             ], 400);
         }
     }
@@ -59,7 +56,7 @@ class CodeAdministrationController extends Controller
 
         if ($code == null) {
             return response()->json([
-                "message" => "id admin incorret",
+                "message" => "Vous n'avez pas initié votre code",
                 "statut" => false,
             ]);
         } else {
@@ -75,6 +72,40 @@ class CodeAdministrationController extends Controller
                 ]);
             }
         }
+
+    }
+
+    public function edite(Request $request)
+    {
+        $request->validate([
+            'code_admin' => 'int|required',
+            'id_admin' => "int|required",
+            'new_code' => "int|required",
+        ]);
+
+        $code = CodeAdministrationModel::where('id_admin', $request->id_admin)->first();
+
+        if ($code == null) {
+            return response()->json([
+                "message" => "Vous n'avez pas initié votre code",
+                "statut" => false,
+            ], 200);
+        } else {
+            if (Hash::check($request->code_admin, $code['code_admin'])) {
+                $code->update(
+                    [
+                        'code_admin' => Hash::make($request->new_code),
+                        'remember_code_admin' => $request->new_code
+                    ]
+                );
+            } else {
+                return response()->json([
+                    "message" => "Ancient code incorret",
+                    "statut" => false,
+                ], 200);
+            }
+        }
+        return response()->json(['message' => 'Modification éffectuée'], 200);
 
     }
 }

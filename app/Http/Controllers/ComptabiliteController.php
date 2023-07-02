@@ -22,13 +22,13 @@ class ComptabiliteController extends Controller
 
     public function create()
     {
-        // Recette : Entre - entrees
+        // Recette : Entre - sortie
         $recette = 0;
         // Sorite : somme des charge et materiel
         $sortie = 0;
         // Entrees : somme versé paiement et versement secteur
         $entre = 0;
-        // Dettes : somme impayer - montant verser
+        // Dettes : somme impayer par les client 
         $dettes = 0;
 
         $prix_materiel = DB::select("SELECT `prix_materiel` FROM `materiel_models`");
@@ -76,10 +76,10 @@ class ComptabiliteController extends Controller
         $entre = $sum_somme_verser_par_sec + $sum_somme_montant_verser;
 
         // resultat dette 
-        $dettes = $sum_somme_impayes - $sum_montant_verser;
+        $dettes = $sum_montant_verser - $sum_somme_impayes;
 
         // resultat recette 
-        $recette = $sortie - $entre;
+        $recette = $entre - $sortie;
         comptabilite::query()->truncate();
         $comptabilites = comptabilite::create([
             'recette' => $recette,
@@ -93,16 +93,18 @@ class ComptabiliteController extends Controller
 
 
 
-
-
-    public function edit(Request $request)
+    public function update(Request $request)
     {
 
-        $versementByLocalitie = DB::table('compatabilities')->where("id", 1)
+        $update = DB::table('comptabilites')->where("id", 1)
             ->update([
-                "total_entree" => 0,
-                "total_sortie" => 0
+                "recette" => 0,
+                "sorties" => 0,
+                "entrees" => 0
             ]);
+
+        return response()->json(['comptabilites' => $update, 'message' => 'Rénitialisation effectuée', 'error' => '0'], 200);
+
     }
 
 

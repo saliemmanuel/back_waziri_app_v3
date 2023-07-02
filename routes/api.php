@@ -39,6 +39,9 @@ Route::get("utilisateur/deconnexion", [UtilisateurController::class, 'deconnexio
 Route::get('utilisateur/user-data', [UtilisateurController::class, 'dataUser'])->middleware('auth:sanctum');
 Route::post('utilisateur/delete-user', [UtilisateurController::class, 'destroy'])->middleware('auth:sanctum');
 Route::post('utilisateur/update', [UtilisateurController::class, 'update'])->middleware('auth:sanctum');
+// updatePassword
+Route::post('utilisateur/updatePassword', [UtilisateurController::class, 'updatePassword'])->middleware('auth:sanctum');
+
 
 // Secteur
 Route::get('secteur/index', [SecteurContoller::class, 'index'])->middleware('auth:sanctum');
@@ -49,6 +52,7 @@ Route::post('secteur/update', [SecteurContoller::class, 'update'])->middleware('
 // code administration 
 Route::post('code/store', [CodeAdministrationController::class, 'store'])->middleware('auth:sanctum');
 Route::post('code/get-code', [CodeAdministrationController::class, 'show'])->middleware('auth:sanctum');
+Route::post('code/edite', [CodeAdministrationController::class, 'edite'])->middleware('auth:sanctum');
 
 // Type abonnement
 Route::get('type-abonnemnt/index', [TypeAbonnementController::class, 'index'])->middleware('auth:sanctum');
@@ -106,3 +110,5 @@ Route::post('message-mois/update', [MessageMoisController::class, 'update'])->mi
 // Comptabilte
 Route::get('comptabilite/index', [ComptabiliteController::class, 'index'])->middleware('auth:sanctum');
 Route::get('comptabilite/create', [ComptabiliteController::class, 'create'])->middleware('auth:sanctum');
+Route::get('comptabilite/update', [ComptabiliteController::class, 'update'])->middleware('auth:sanctum');
+

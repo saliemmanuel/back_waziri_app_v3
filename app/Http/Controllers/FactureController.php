@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\AbonneModel;
+use App\Models\EnvoiMessageModel;
 use App\Models\FactureModel;
+use App\Models\MessageMois;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -37,17 +39,6 @@ class FactureController extends Controller
             `type_abonnement_models` tm ,
             `facture_models` fm
             WHERE fm.id_abonne = am.id AND am.id_type_abonnement = tm.id  ORDER BY id_facture DESC');
-
-
-            // $facture = DB::table('abonne_models')
-            // ->leftJoin('type_abonnement_models', 'abonne_models.id_type_abonnement', 'type_abonnement_models.id')
-            // ->orderBy('abonne_models.created_at', 'asc')
-            // ->leftJoin('facture_models', 'facture_models.id_abonne', 'abonne_models.id')
-            // ->groupBy("cni_abonne")
-            // ->get(['facture_models.id as id_facture', 'facture_models.created_at as create_fm', 'facture_models.*', 
-            // 'abonne_models.id as id_abonnee',  'abonne_models.*', 'type_abonnement_models.*'])
-
-            // ;
 
             if (!isNull($facture))
                 return response()->json(['response' => 'Aucune facture disponible', 'error' => '1'], 400);
@@ -84,19 +75,32 @@ class FactureController extends Controller
             // 
             for ($i = 0; $i < count($facture); $i++) {
                 $impayes = $facture[$i]->mensualite_facture - $facture[$i]->montant_verser;
-                FactureModel::create(
-                    [
-                        'numero_facture' => count(FactureModel::all()) . rand(0, 1000000),
-                        'mensualite_facture' => $abonnes[$j]->montant,
-                        'montant_verser' => 0,
-                        'reste_facture' => 0,
-                        'statut_facture' => 'impayer',
-                        'impayes' => $impayes < 0 ? 0 : $impayes,
-                        'id_abonne' => $abonnes[$j]->id_adonne,
-                        'id_type_abonnement' => $abonnes[$j]->id_type_abonnement,
-                        'id_chef_secteur' => $abonnes[$j]->id_chef_secteur
-                    ]
-                );
+                // On envoi un message pour avis de coupure au client
+                $decisionAvisCoupure = $impayes > 5000 ? false : true;
+                // On arrête de générer la facture d'un client 
+                $decisionArretGenFact = ($impayes + $facture[$i]->mensualite_facture) > 10000 ? false : true;
+
+                if (!$decisionAvisCoupure) {
+                    //Envoi message avis de coupure
+                    $this->envoiMessage("avis_coupure", $abonnes[$j]->telephone_abonne);
+                }
+                if ($decisionArretGenFact) {
+                    // Envoi message mois disponibilité des factures 
+                    $this->envoiMessage("message_mois", $abonnes[$j]->telephone_abonne);
+                    FactureModel::create(
+                        [
+                            'numero_facture' => $facture[$i]->numero_facture ?? $j + 1,
+                            'mensualite_facture' => $abonnes[$j]->montant,
+                            'montant_verser' => 0,
+                            'reste_facture' => 0,
+                            'statut_facture' => 'impayer',
+                            'impayes' => $impayes < 0 ? 0 : $impayes,
+                            'id_abonne' => $abonnes[$j]->id_adonne,
+                            'id_type_abonnement' => $abonnes[$j]->id_type_abonnement,
+                            'id_chef_secteur' => $abonnes[$j]->id_chef_secteur
+                        ]
+                    );
+                }
             }
         }
 
@@ -122,7 +126,7 @@ class FactureController extends Controller
     {
         $facture = FactureModel::find($request->id_facture);
         if (is_null($facture))
-            return response()->json(['message' => 'abonne non disponible', 'error' => '1'], 400);
+            return response()->json(['message' => 'facture non disponible', 'error' => '1'], 400);
         $rules = [
             'id_facture' => 'string|required',
             'numero_facture' => 'string|required',
@@ -131,7 +135,8 @@ class FactureController extends Controller
             'reste_facture' => 'string|required',
             'statut_facture' => 'string|required',
             'impayes' => 'string|required',
-            'id_abonne' => 'string|required'
+            'id_abonne' => 'string|required',
+            'telephone_abonne' => 'string|required'
         ];
         $validator = Validator::make($request->all(), $rules);
 
@@ -146,6 +151,8 @@ class FactureController extends Controller
                 'statut_facture' => $request->statut_facture,
                 'impayes' => $request->impayes
             ]);
+            // Envoi message paiement
+            $this->envoiMessage("paiement", $request->telephone_abonne);
             return response()->json(['facture' => $facture, 'message' => 'Paiement effectué', 'error' => '0'], 200);
         } catch (\Throwable $th) {
             return response()->json(['error' => '1', 'message' => 'erreur 400'], 200);
@@ -192,6 +199,19 @@ class FactureController extends Controller
                 return response()->json(['response' => 'Aucune facture disponible', 'error' => '1'], 400);
             return response()->json(['facture' => $facture, 'error' => '0'], 200);
         }
+
+    }
+
+    public function envoiMessage($message, $telephone_abonne)
+    {
+
+        $messegeMois = DB::select("SELECT `corps_message` FROM `message_mois` 
+                    WHERE `designation_message` = '" . $message . "'");
+        EnvoiMessageModel::create([
+            "corps" => $messegeMois[0]->corps_message,
+            "telephone" => $telephone_abonne,
+            "statut" => "non-envoyer"
+        ]);
 
     }
 }
